@@ -75,11 +75,18 @@
 
   (mx-io/provide-data train-data)
   (mx-io/provide-label train-data)
+  (mx-io/reset train-data)
   (def my-batch (mx-io/next train-data))
   (def images (mx-io/batch-data my-batch))
-  (ndarray/shape (first images))
+  (ndarray/shape (ndarray/reshape (first images) [100 1 28 28]))
   (viz/im-sav {:title "first" :output-path "results/" :x (first images)})
+  (viz/im-sav {:title "cm-first" :output-path "results/" :x (ndarray/reshape (first images) [100 1 28 28])})
 
+
+  (def preds (m/predict-batch my-mod {:data images} ))
+  (ndarray/shape (ndarray/reshape (first preds) [100 1 28 28]))
+    (viz/im-sav {:title "cm-preds" :output-path "results/" :x (ndarray/reshape (first preds) [100 1 28 28])})
+  
   (def my-metric (eval-metric/mse))
 
 
@@ -119,6 +126,7 @@
     ;;;high level score (returs the eval values)
     (let [score (m/score mod {:eval-data test-data :eval-metric (eval-metric/accuracy)})]
       (println "High level predict score is " score)))
+
   
 
 
