@@ -67,8 +67,6 @@
 
     (sym/linear-regression-output {:data data :label output})
 
-    #_(sym/make-loss "loss" {:data (sym/- data label)})
-
     ))
 
 (def data-desc (first (mx-io/provide-data-desc train-data)))
@@ -105,7 +103,7 @@
   (viz/im-sav {:title "originals" :output-path "results/" :x (ndarray/reshape (first images) [100 1 28 28])})
 
 
-  (train 1)
+  (train 3)
 
   
   (def preds (m/predict-batch model {:data images} ))
