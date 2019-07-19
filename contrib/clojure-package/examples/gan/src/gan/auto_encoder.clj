@@ -29,7 +29,7 @@
                                        :label (str data-dir "train-images-idx3-ubyte")
                                         ;:input-shape [1 28 28]
                                         :input-shape [784]
-                                        :label-shape [784]
+                                        :label-shape [10]
                                         :flat true
                                         :batch-size batch-size
                                         :shuffle true}))
@@ -105,8 +105,10 @@
 
   (train 3)
 
-  
-  (def preds (m/predict-batch model {:data images} ))
+
+  (def my-test-batch (mx-io/next test-data))
+  (def test-images (mx-io/batch-data my-test-batch))
+  (def preds (m/predict-batch model {:data test-images} ))
   (viz/im-sav {:title "preds" :output-path "results/" :x (ndarray/reshape (first preds) [100 1 28 28])})
   
 
