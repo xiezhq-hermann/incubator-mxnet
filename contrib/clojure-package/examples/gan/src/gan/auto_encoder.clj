@@ -71,7 +71,10 @@
     ))
 
 (def data-desc (first (mx-io/provide-data-desc train-data)))
-(def label-desc (first (mx-io/provide-label-desc train-data)))
+;; one hot encode the label
+(def label-desc (assoc
+                 (first (mx-io/provide-label-desc train-data))
+                 :shape [100 10]))
 
 (def model (-> (m/module (get-symbol) {:data-names ["input"] :label-names ["input_"]})
                (m/bind {:data-shapes [(assoc label-desc :name "input")]
@@ -81,6 +84,10 @@
 
 (def my-metric (eval-metric/mse))
 
+(defn one-hot-encode [labels]
+  (ndarray-api/one-hot labels 10))
+
+
 (defn train [num-epochs]
   (doseq [epoch-num (range 0 num-epochs)]
     (println "starting epoch " epoch-num)
@@ -88,7 +95,10 @@
      train-data
      (fn [batch]
        (-> model
-           (m/forward {:data (mx-io/batch-label batch) :label (mx-io/batch-data batch)})
+           (m/forward {:data [(-> (mx-io/batch-label batch)
+                                  first
+                                  (one-hot-encode))]
+                       :label (mx-io/batch-data batch)})
            (m/update-metric my-metric (mx-io/batch-data batch))
            (m/backward)
            (m/update))))
@@ -107,16 +117,18 @@
 
 
   (ndarray/shape (first train-labels))
+  (ndarray/->vec (first train-labels))
   (train 3)
 
 
   (def my-test-batch (mx-io/next test-data))
   (def test-images (mx-io/batch-data my-test-batch))
   (def test-labels (mx-io/batch-label my-test-batch))
-  (def preds (m/predict-batch model {:data test-labels} ))
+  (def one-hot-labels [(one-hot-encode (first test-labels))])
+  (def preds (m/predict-batch model {:data one-hot-labels} ))
   (viz/im-sav {:title "preds" :output-path "results/" :x (ndarray/reshape (first preds) [100 1 28 28])})
 
-  (def x (ndarray/array (into [] (repeat 100 2)) [100]))
+  (def x (ndarray/array (into [] (repeatedly 100 #(rand-int 9))) [100]))
   (def new-preds (m/predict-batch model {:data [x]} ))
   (viz/im-sav {:title "preds" :output-path "results/" :x (ndarray/reshape (first new-preds) [100 1 28 28])})
 
