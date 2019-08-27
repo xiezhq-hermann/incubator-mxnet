@@ -36,7 +36,7 @@ template<>
 void Copy<cpu, cpu>(const TBlob &from, TBlob *to,
                     Context from_ctx, Context to_ctx,
                     RunContext ctx) {
-  MSHADOW_TYPE_SWITCH(to->type_flag_, DType, {
+  MSHADOW_TYPE_SWITCH_WITH_COMPLEX(to->type_flag_, DType, {
     if (to->type_flag_ == from.type_flag_) {
       const index_t size = static_cast<index_t>(from.Size());
       CHECK_EQ(size, to->Size()) << "copying size mismatch, from: " << size * sizeof(DType)
