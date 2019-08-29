@@ -44,7 +44,7 @@ void Copy<cpu, gpu>(const TBlob &from, TBlob *to,
                     RunContext ctx) {
   CHECK_EQ(to->type_flag_, from.type_flag_)
     << "Source and target must have the same data type when copying across devices.";
-  MSHADOW_TYPE_SWITCH(to->type_flag_, DType, {
+  MSHADOW_TYPE_SWITCH_WITH_COMPLEX(to->type_flag_, DType, {
     mshadow::Copy(to->FlatTo1D<gpu, DType>(),
                   from.FlatTo1D<cpu, DType>(),
                   ctx.get_stream<gpu>());
@@ -57,7 +57,7 @@ void Copy<gpu, cpu>(const TBlob &from, TBlob *to,
                     RunContext ctx) {
   CHECK_EQ(to->type_flag_, from.type_flag_)
     << "Source and target must have the same data type when copying across devices.";
-  MSHADOW_TYPE_SWITCH(to->type_flag_, DType, {
+  MSHADOW_TYPE_SWITCH_WITH_COMPLEX(to->type_flag_, DType, {
     mshadow::Copy(to->FlatTo1D<cpu, DType>(),
                   from.FlatTo1D<gpu, DType>(),
                   ctx.get_stream<gpu>());

@@ -279,6 +279,7 @@ extern "C" {
 #include "./half.h"
 #include "./half2.h"
 #include "./logging.h"
+#include "./complex.h"
 /*! \brief namespace for mshadow */
 namespace mshadow {
 /*! \brief buffer size for each random number generator */
@@ -416,7 +417,7 @@ struct DataType<int64_t> {
 };
 // todo: replace the std::complex by customed dtype like half
 template<>
-struct DataType<std::complex<float>> {
+struct DataType<complex::complex64> {
   static const int kFlag = kComplex64;
   static const int kLanes = 1;
 #if (MSHADOW_USE_CUDA && CUDA_VERSION >= 8000)
@@ -424,7 +425,7 @@ struct DataType<std::complex<float>> {
 #endif
 };
 template<>
-struct DataType<std::complex<double>> {
+struct DataType<complex::complex128> {
   static const int kFlag = kComplex128;
   static const int kLanes = 1;
 #if (MSHADOW_USE_CUDA && CUDA_VERSION >= 8000)
@@ -1017,13 +1018,13 @@ struct minimum {
     break;                                                  \
   case mshadow::kComplex64:                                 \
     {                                                       \
-      typedef std::complex<float> DType;                    \
+      typedef mshadow::complex::complex64 DType;            \
       {__VA_ARGS__}                                         \
     }                                                       \
     break;                                                  \
   case mshadow::kComplex128:                                \
     {                                                       \
-      typedef std::complex<double> DType;                   \
+      typedef mshadow::complex::complex128 DType;           \
       {__VA_ARGS__}                                         \
     }                                                       \
     break;                                                  \
