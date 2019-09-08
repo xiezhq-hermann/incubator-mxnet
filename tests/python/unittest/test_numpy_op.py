@@ -1981,6 +1981,53 @@ def test_np_copysign():
             assert_almost_equal(x.grad.asnumpy(), x_grad, rtol=rtol, atol=atol)
 
 
+@with_seed()
+@use_np
+def test_np_fft():
+    def np_fft_backward(ograd, n, axis):
+        return np.fft.ifft(ograd, n=None, axis=-1, norm=None)
+
+    class TestFFT(HybridBlock):
+        def __init__(self, compute_size=128, axis=-1):
+            super(TestFFT, self).__init__()
+            self._compute_size = compute_size
+            self._axis = axis
+
+        def hybrid_forward(self, F, a):
+            return F.np.fft(a, compute_size=self._compute_size, axis=self._axis)
+
+    shapes = [tuple(random.randrange(10) for i in range(random.randrange(6))) for j in range(5)]
+    for hybridize in [True, False]:
+        for shape in shapes:
+            test_np_fft = TestFFT(n=n, axis=axis)
+            if hybridize:
+                test_np_fft.hybridize()
+            for itype in [_np.complex64, _np.complex128]:
+                # note the tolerance shall be scaled by the input n
+                if itype == _np.float16:
+                    rtol = atol = 1e-2*len(shape)*n
+                else:
+                    rtol = atol = 1e-5*len(shape)*n
+                x = rand_ndarray(shape).astype(itype).as_np_ndarray()
+                x.attach_grad()
+                np_out = _np.fft(x.asnumpy(), n=n, axis=axis)
+                with mx.autograd.record():
+                    mx_out = test_np_fft(x)
+                assert mx_out.shape == np_out.shape
+                assert_almost_equal(mx_out.asnumpy(), np_out, rtol=rtol, atol=atol)
+                mx_out.backward()
+                if (np_out.size == 0):
+                    np_backward = _np.zeros(shape)
+                else:                    
+                    np_backward = np_fft_backward(_np.ones(np_out.shape, dtype=itype), n=n, axis=axis)
+                assert x.grad.shape == np_backward.shape
+                assert_almost_equal(x.grad.asnumpy(), np_backward, rtol=rtol, atol=atol)
+
+                mx_out = np.fft(x, n=n, axis=axis)
+                np_out = _np.fft(x.asnumpy(), n=n, axis=axis)
+                assert_almost_equal(mx_out.asnumpy(), np_out, rtol=rtol, atol=atol)
+
+
 if __name__ == '__main__':
     import nose
     nose.runmodule()
