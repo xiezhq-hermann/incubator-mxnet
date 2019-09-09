@@ -27,35 +27,81 @@
 
 namespace mxnet {
 namespace op {
-template<>
-Operator *CreateNPOp<cpu>(NPFFTParam param, int dtype) {
-  LOG(FATAL) << "fft is only available for GPU.";
-  return nullptr;
+
+inline bool FFTShape(const nnvm::NodeAttrs& attrs,
+                      std::vector<TShape>* in_attrs,
+                      std::vector<TShape>* out_attrs) {
+  CHECK_EQ(in_attrs->size(), 1U);
+  CHECK_EQ(out_attrs->size(), 1U);
+  if (!shape_is_known(in_attrs->at(0))) {
+    return false;
+  }
+  SHAPE_ASSIGN_CHECK(*out_attrs, 0, (*in_attrs)[0]);
+  return true;
 }
 
-Operator *NPFFTProp::CreateOperatorEx(Context ctx, mxnet::ShapeVector *in_shape,
-                                                    std::vector<int> *in_type) const {
-  DO_BIND_DISPATCH(CreateNPOp, param_, (*in_type)[0]);
+inline int TypeCast(const int& itype) {
+  using namespace mshadow;
+  switch (itype)
+  {
+  case kFloat32: case kFloat16: case kUint8: case kInt8: case kInt32: case kInt64: case kComplex64:
+    return kComplex64;
+  case kFloat64: case kComplex128:
+    return kComplex128;
+  default:
+    LOG(FATAL) << "Unknown type enum " << itype;
+  }
+  return -1;
+}
+
+inline bool FFTType(const nnvm::NodeAttrs& attrs,
+                      std::vector<int>* in_attrs,
+                      std::vector<int>* out_attrs) {
+  CHECK_EQ(in_attrs->size(), 1U);
+  CHECK_EQ(out_attrs->size(), 1U);
+
+  TYPE_ASSIGN_CHECK(*out_attrs, 0, TypeCast(in_attrs->at(0)));
+  // TYPE_ASSIGN_CHECK(*in_attrs, 0, TypeCast(out_attrs->at(0)));
+
+  return out_attrs->at(0) != -1 && in_attrs->at(0) != -1;
 }
 
 DMLC_REGISTER_PARAMETER(NPFFTParam);
 
-MXNET_REGISTER_OP_PROPERTY(_np_fft, NPFFTProp)
-.describe(R"code(Apply 1D FFT to input"
-
-.. note:: `fft` is only available on GPU.
-
-Currently support native `complex64` data type for both input and output, which share the same size
-
-Example::
-
-   data_cpu = np.random.normal(0,1,(3,4)).astype(np.complex64)
-   data_cpu.imag = np.random.normal(0,1,(3,4))
-   data_gpu = mx.nd.array(data_cpu, dtype="complex64", ctx=mx.gpu(0))
-   out = mx.contrib.ndarray.fft(data_gpu)
-
-)code" ADD_FILELINE)
-.add_argument("data", "NDArray-or-Symbol", "Input data to the FFTOp.")
+NNVM_REGISTER_OP(_np_fft)
+.set_attr_parser(ParamParser<NPFFTParam>)
+.set_num_inputs(1)
+.set_num_outputs(1)
+.set_attr<nnvm::FListInputNames>("FListInputNames",
+  [](const NodeAttrs& attrs) {
+    return std::vector<std::string>{"a"};
+  })
+.set_attr<mxnet::FInferShape>("FInferShape", FFTShape)
+.set_attr<nnvm::FInferType>("FInferType", FFTType)
+.set_attr<FResourceRequest>("FResourceRequest",
+  [](const NodeAttrs& attrs) {
+    return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
+  })
+// .set_attr<FCompute>("FCompute<cpu>", FFTForward<cpu>)
+.set_attr<nnvm::FGradient>("FGradient",
+                            ElemwiseGradUseNone{"_backward_np_fft"})
+.set_attr<nnvm::FInplaceOption>("FInplaceOption",
+  [](const NodeAttrs& attrs) {
+    return std::vector<std::pair<int, int> >{{0, 0}};
+  })
+.add_argument("a", "NDArray-or-Symbol", "Input ndarray")
 .add_arguments(NPFFTParam::__FIELDS__());
+
+NNVM_REGISTER_OP(_backward_np_fft)
+.set_attr_parser(ParamParser<NPFFTParam>)
+.set_num_inputs(1)
+.set_num_outputs(1)
+.set_attr<nnvm::TIsBackward>("TIsBackward", true)
+.set_attr<FResourceRequest>("FResourceRequest",
+  [](const NodeAttrs& attrs) {
+    return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
+  });
+// .set_attr<FCompute>("FCompute<cpu>", FFTBackward<cpu>);
+
 }  // namespace op
 }  // namespace mxnet

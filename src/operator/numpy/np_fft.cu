@@ -27,16 +27,13 @@
 
  namespace mxnet {
  namespace op {
- 
- template<>
- Operator* CreateNPOp<gpu>(NPFFTParam param, int dtype) {
-   Operator *op = NULL;
-   MSHADOW_COMPLEX_TYPE_SWITCH(dtype, DType, {
-       op = new NPFFTOp<gpu, DType>(param);
-   })
-   return op;
- }
- 
- }  // namespace op
- }  // namespace mxnet
+
+NNVM_REGISTER_OP(_np_fft)
+.set_attr<FCompute>("FCompute<gpu>", FFTForward<gpu>);
+
+NNVM_REGISTER_OP(_backward_np_fft)
+.set_attr<FCompute>("FCompute<gpu>", FFTBackward<gpu>);
+
+}  // namespace op
+}  // namespace mxnet
  
