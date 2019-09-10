@@ -60,11 +60,77 @@ struct resize_and_cast {
   }
 };
 
+template<typename xpu>
+inline void cuFFTPlan(cufftHandle* plan, int& len_fft, 
+                  int& batch_size, const mshadow::complex::complex64& indicator) {
+  cufftPlanMany(plan, 1, &len_fft, nullptr, 0, 0, nullptr, 0, 0, CUFFT_C2C, batch_size);
+}
+
+template<typename xpu>
+inline void cuFFTPlan(cufftHandle* plan, int& len_fft, 
+                  int& batch_size, const mshadow::complex::complex128& indicator) {
+  cufftPlanMany(plan, 1, &len_fft, nullptr, 0, 0, nullptr, 0, 0, CUFFT_Z2Z, batch_size);
+}
+
+template<typename xpu, typename IType>
+inline void cuFFTExec(const OpContext& ctx, cufftHandle& plan,
+                  const mshadow::Tensor<xpu, 2, IType>& in_data,
+                  const mshadow::Tensor<xpu, 2, mshadow::complex::complex64>& input_buffer,
+                  const mshadow::Tensor<xpu, 2, mshadow::complex::complex64>& out_data,
+                  size_t offset, int batch_size, int len_fft, int grad_dim) {
+  
+  using namespace mxnet_op;
+  Stream<xpu>* s = ctx.get_stream<xpu>();
+  Kernel<resize_and_cast, xpu>::Launch(
+      s, batch_size*len_fft, input_buffer.dptr_,
+      in_data.Slice(offset, offset+batch_size).dptr_,
+      in_data.shape_[1], len_fft);
+  cufftComplex* in_tmp = const_cast<cufftComplex*>(
+      reinterpret_cast<const cufftComplex*>(input_buffer.dptr_));
+  if (grad_dim == 0) {
+    cufftComplex* out_tmp = reinterpret_cast<cufftComplex*>(out_data.dptr_ + offset*len_fft);
+    CHECK_EQ(cufftExecC2C(plan, in_tmp, out_tmp, CUFFT_FORWARD), CUFFT_SUCCESS);
+  } else {
+    CHECK_EQ(cufftExecC2C(plan, in_tmp, in_tmp, CUFFT_INVERSE), CUFFT_SUCCESS);
+    Kernel<resize_and_cast, xpu>::Launch(
+        s, offset, out_data.Slice(offset, offset+batch_size).dptr_,
+        input_buffer.dptr_,
+        len_fft, grad_dim);
+  }
+}
+
+template<typename xpu, typename IType>
+inline void cuFFTExec(const OpContext& ctx, cufftHandle& plan,
+                  const mshadow::Tensor<xpu, 2, IType>& in_data,
+                  const mshadow::Tensor<xpu, 2, mshadow::complex::complex128>& input_buffer,
+                  const mshadow::Tensor<xpu, 2, mshadow::complex::complex128>& out_data,
+                  size_t offset, int batch_size, int len_fft, int grad_dim) {
+  
+  using namespace mxnet_op;
+  Stream<xpu>* s = ctx.get_stream<xpu>();
+  Kernel<resize_and_cast, xpu>::Launch(
+      s, batch_size*len_fft, input_buffer.dptr_,
+      in_data.Slice(offset, offset+batch_size).dptr_,
+      in_data.shape_[1], len_fft);
+  cufftDoubleComplex* in_tmp = const_cast<cufftDoubleComplex*>(
+      reinterpret_cast<const cufftDoubleComplex*>(input_buffer.dptr_));
+  if (grad_dim == 0) {
+    cufftDoubleComplex* out_tmp = reinterpret_cast<cufftDoubleComplex*>(out_data.dptr_ + offset*len_fft);
+    CHECK_EQ(cufftExecZ2Z(plan, in_tmp, out_tmp, CUFFT_FORWARD), CUFFT_SUCCESS);
+  } else {
+    CHECK_EQ(cufftExecZ2Z(plan, in_tmp, in_tmp, CUFFT_INVERSE), CUFFT_SUCCESS);
+    Kernel<resize_and_cast, xpu>::Launch(
+        s, offset, out_data.Slice(offset, offset+batch_size).dptr_,
+        input_buffer.dptr_,
+        len_fft, grad_dim);
+  }
+}
+
 template <typename xpu, typename IType, typename OType>
 inline void FFTExec(const OpContext& ctx,
                       const mshadow::Tensor<xpu, 2, IType>& in_data,
                       const mshadow::Tensor<xpu, 2, OType>& out_data,
-                      int n_ffts, int len_fft, int batch_size) {
+                      int n_ffts, int len_fft, int batch_size, int grad_dim=0) {
   using namespace mshadow;
   using namespace mxnet_op;
   
@@ -74,36 +140,20 @@ inline void FFTExec(const OpContext& ctx,
   
   // start fft
   cufftHandle plan;
-  cufftPlanMany(&plan, 1, &len_fft, nullptr, 0, 0, nullptr, 0, 0, CUFFT_C2C, batch_size);
+  cuFFTPlan<xpu>(&plan, len_fft, batch_size, OType(0));
+  
   size_t num_compute = n_ffts / batch_size;
-  int stride_ = batch_size * len_fft;
-
   for (size_t idx=0; idx < num_compute; ++idx) {
-    Kernel<resize_and_cast, xpu>::Launch(
-        s, stride_, input_buffer.dptr_,
-        in_data.Slice(idx*batch_size, idx*batch_size+batch_size).dptr_,
-        in_data.shape_[1], len_fft);
-    cufftComplex* in_tmp = const_cast<cufftComplex*>(
-      reinterpret_cast<const cufftComplex*>(input_buffer.dptr_));
-    cufftComplex* out_tmp = reinterpret_cast<cufftComplex*>(out_data.dptr_ + idx*stride_);
-    CHECK_EQ(cufftExecC2C(plan, in_tmp, out_tmp, CUFFT_FORWARD), CUFFT_SUCCESS);
+    cuFFTExec(ctx, plan, in_data, input_buffer, out_data, idx*batch_size, batch_size, len_fft, grad_dim);
   }
   cufftDestroy(plan);
 
   // handle the remaining samples
-  size_t remain_num = n_ffts - batch_size*num_compute;
+  int remain_num = n_ffts - batch_size*num_compute;
   if (remain_num > 0) {
     cufftHandle plan_remain;
-    cufftPlanMany(&plan_remain, 1, &len_fft, nullptr, 0, 0, nullptr, 0, 0, CUFFT_C2C, remain_num);
-
-    Kernel<resize_and_cast, xpu>::Launch(
-        s, remain_num*len_fft, input_buffer.dptr_,
-        in_data.Slice(num_compute*batch_size, num_compute*batch_size+remain_num).dptr_,
-        in_data.shape_[1], len_fft);
-    cufftComplex* in_tmp = const_cast<cufftComplex*>(
-      reinterpret_cast<const cufftComplex*>(input_buffer.dptr_));
-    cufftComplex* out_tmp = reinterpret_cast<cufftComplex*>(out_data.dptr_ + num_compute*stride_);
-    CHECK_EQ(cufftExecC2C(plan_remain, in_tmp, out_tmp, CUFFT_FORWARD), CUFFT_SUCCESS);
+    cuFFTPlan<xpu>(&plan_remain, len_fft, remain_num, OType(0));
+    cuFFTExec(ctx, plan_remain, in_data, input_buffer, out_data, num_compute*batch_size, remain_num, len_fft, grad_dim);
     cufftDestroy(plan_remain);
   }
 }
@@ -159,6 +209,7 @@ void FFTBackwardImpl(const OpContext& ctx, const TBlob& ograd, const TBlob& igra
 
   int n_ffts = ograd.shape_.ProdShape(0, ograd.ndim()-1);
   int len_fft = ograd.shape_[ograd.ndim()-1];
+  int grad_dim = igrad.shape_[ograd.ndim()-1];
 
   Stream<xpu>* s = ctx.get_stream<xpu>();
   MSHADOW_TYPE_SWITCH_WITH_COMPLEX(ograd.type_flag_, IType, {
@@ -166,8 +217,8 @@ void FFTBackwardImpl(const OpContext& ctx, const TBlob& ograd, const TBlob& igra
       Tensor<xpu, 2, IType> in_data = ograd.get_with_shape<xpu, 2, IType>(
         Shape2(n_ffts, len_fft), s);
       Tensor<xpu, 2, OType> out_data = igrad.get_with_shape<xpu, 2, OType>(
-        Shape2(n_ffts, len_fft), s);
-      FFTExec<xpu, IType, OType>(ctx, in_data, out_data, n_ffts, len_fft, batch_size);
+        Shape2(n_ffts, grad_dim), s);
+      FFTExec<xpu, IType, OType>(ctx, in_data, out_data, n_ffts, len_fft, batch_size, grad_dim);
     });
   });
 }
