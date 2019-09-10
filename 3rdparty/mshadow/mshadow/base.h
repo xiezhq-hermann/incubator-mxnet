@@ -1051,6 +1051,25 @@ struct minimum {
                   "32-bit and 64-bit floating point";  \
   }
 
+#define MSHADOW_COMPLEX_TYPE_SWITCH(type, DType, ...)  \
+  switch (type) {                                           \
+  case mshadow::kComplex64:                                 \
+    {                                                       \
+      typedef mshadow::complex::complex64 DType;            \
+      {__VA_ARGS__}                                         \
+    }                                                       \
+    break;                                                  \
+  case mshadow::kComplex128:                                \
+    {                                                       \
+      typedef mshadow::complex::complex128 DType;           \
+      {__VA_ARGS__}                                         \
+    }                                                       \
+    break;                                                  \
+  default:                                                  \
+    LOG(FATAL) << "This operation only supports "           \
+                  "complex64 and complex128";               \
+  }
+
 #define MSHADOW_REAL_TYPE_SWITCH(type, DType, ...)  \
   switch (type) {                                   \
   case mshadow::kFloat32:                           \
