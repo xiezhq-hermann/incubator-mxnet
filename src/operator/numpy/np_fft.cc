@@ -36,7 +36,13 @@ inline bool FFTShape(const nnvm::NodeAttrs& attrs,
   if (!shape_is_known(in_attrs->at(0))) {
     return false;
   }
-  SHAPE_ASSIGN_CHECK(*out_attrs, 0, (*in_attrs)[0]);
+  const NPFFTParam& param = nnvm::get<NPFFTParam>(attrs.parsed);
+  CHECK(!param.n.has_value() || param.n.value() > 0);
+  TShape oshape = (*in_attrs)[0];
+  if (param.n.has_value()){
+      oshape[oshape.ndim()-1] = param.n.value();
+  }
+  SHAPE_ASSIGN_CHECK(*out_attrs, 0, oshape);
   return true;
 }
 
@@ -82,7 +88,7 @@ NNVM_REGISTER_OP(_np_fft)
   [](const NodeAttrs& attrs) {
     return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
   })
-// .set_attr<FCompute>("FCompute<cpu>", FFTForward<cpu>)
+.set_attr<FCompute>("FCompute<cpu>", FFTForward<cpu>)
 .set_attr<nnvm::FGradient>("FGradient",
                             ElemwiseGradUseNone{"_backward_np_fft"})
 .set_attr<nnvm::FInplaceOption>("FInplaceOption",
@@ -100,8 +106,8 @@ NNVM_REGISTER_OP(_backward_np_fft)
 .set_attr<FResourceRequest>("FResourceRequest",
   [](const NodeAttrs& attrs) {
     return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
-  });
-// .set_attr<FCompute>("FCompute<cpu>", FFTBackward<cpu>);
+  })
+.set_attr<FCompute>("FCompute<cpu>", FFTBackward<cpu>);
 
 }  // namespace op
 }  // namespace mxnet
