@@ -55,7 +55,7 @@ struct resize_and_cast {
   template<typename IType, typename OType>
   MSHADOW_XINLINE static void Map(int i, OType* out, IType* in, int dim, int n) {
     int tmp = i / n;
-    int offset = i - tmp;
+    int offset = i - tmp * n;
     out[i] = (offset >= dim) ? OType(0) : OType(in[tmp*dim+offset]);
   }
 };
@@ -165,6 +165,7 @@ void FFTForwardImpl(const OpContext& ctx, const TBlob& in, const TBlob& out,
   using namespace mxnet_op;
 
   CHECK(!n.has_value() || n.value() > 0);
+  CHECK_GE(batch_size, 1);
   if (out.Size() == 0) return;
 
   int n_ffts = in.shape_.ProdShape(0, in.ndim()-1);
@@ -205,6 +206,7 @@ void FFTBackwardImpl(const OpContext& ctx, const TBlob& ograd, const TBlob& igra
   using namespace mxnet_op;
 
   CHECK(!n.has_value() || n.value() > 0);
+  CHECK_GE(batch_size, 1);
   if (igrad.Size() == 0) return;
 
   int n_ffts = ograd.shape_.ProdShape(0, ograd.ndim()-1);

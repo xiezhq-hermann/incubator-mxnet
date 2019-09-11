@@ -70,7 +70,7 @@ void Copy<gpu, gpu>(const TBlob &from, TBlob *to,
                     RunContext ctx) {
   if (from_ctx.dev_id == to_ctx.dev_id) {
     mshadow::Stream<gpu>* s = ctx.get_stream<gpu>();
-    MSHADOW_TYPE_SWITCH(to->type_flag_, DType, {
+    MSHADOW_TYPE_SWITCH_WITH_COMPLEX(to->type_flag_, DType, {
       if (to->type_flag_ == from.type_flag_) {
         mshadow::Copy(to->FlatTo1D<gpu, DType>(s),
                       from.FlatTo1D<gpu, DType>(s),
