@@ -2004,13 +2004,8 @@ def test_np_fft():
             test_np_fft = TestFFT(n=n, batch_size=batch_size)
             if hybridize:
                 test_np_fft.hybridize()
-            for itype in [_np.float16, _np.float32, _np.float64, _np.int8, _np.int32, _np.int64]:
-            # for itype in [_np.complex64]:
-                # note the tolerance shall be scaled by the input n
-                if itype in [_np.float16, _np.int8]:
-                    rtol = atol = 1e-2*len(shape)*n
-                else:
-                    rtol = atol = 1e-5*len(shape)*n
+            for itype in [_np.float16, _np.float32, _np.float64, _np.int8, _np.int32, _np.int64, _np.complex64, _np.complex128]:
+                rtol = atol = 1e-5*len(shape)*n
                 x = rand_ndarray(shape).astype(itype).as_np_ndarray()
                 x.attach_grad()
                 np_out = _np.fft.fft(x.asnumpy(), n=n)
