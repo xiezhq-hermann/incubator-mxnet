@@ -21,7 +21,8 @@ namespace mshadow {
 /* \brief name space for host/device portable complex value */
 namespace complex {
 #define MSHADOW_COMPLEX_OPERATOR(DTYPE, OP)                               \
-  template<typename T>                                                    \
+  template<typename T, typename = typename\
+  std::enable_if<!(std::is_same<T, DTYPE>::value)>::type>  \
   MSHADOW_XINLINE DTYPE operator OP (const DTYPE& a, const T& b) {        \
     return a OP DTYPE(b);  /* NOLINT(*) */                                \
   }                                                                       \
@@ -58,6 +59,14 @@ class MSHADOW_ALIGNED(8) complex64 {
   MSHADOW_XINLINE explicit complex64(const int64_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const uint64_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const complex128& value);
+
+  MSHADOW_XINLINE operator float() const {
+#if MSHADOW_CUDA_COMPLEX
+    return cuCrealf(cucomplex64_);
+#else
+    return complex64_.real();
+#endif
+  }
 
 #if MSHADOW_CUDA_COMPLEX
   MSHADOW_XINLINE explicit complex64(const cuFloatComplex& value) {
@@ -155,8 +164,8 @@ class MSHADOW_ALIGNED(16) complex128 {
   };
 
   MSHADOW_XINLINE complex128() {}
-  MSHADOW_XINLINE complex128(const float& value) { constructor(value); }
-  MSHADOW_XINLINE explicit complex128(const double& value) { constructor(value); }
+  MSHADOW_XINLINE complex128(const double& value) { constructor(value); }
+  MSHADOW_XINLINE explicit complex128(const float& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const int8_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const uint8_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const int32_t& value) { constructor(value); }
@@ -164,6 +173,14 @@ class MSHADOW_ALIGNED(16) complex128 {
   MSHADOW_XINLINE explicit complex128(const int64_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const uint64_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const complex64& value);
+
+  MSHADOW_XINLINE operator double() const {
+#if MSHADOW_CUDA_COMPLEX
+    return cuCreal(cucomplex128_);
+#else
+    return complex128_.real();
+#endif
+  }
 
 #if MSHADOW_CUDA_COMPLEX
   MSHADOW_XINLINE explicit complex128(const cuDoubleComplex& value) {

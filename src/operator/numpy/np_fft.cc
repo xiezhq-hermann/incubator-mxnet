@@ -67,7 +67,6 @@ inline bool FFTType(const nnvm::NodeAttrs& attrs,
   CHECK_EQ(out_attrs->size(), 1U);
 
   TYPE_ASSIGN_CHECK(*out_attrs, 0, TypeCast(in_attrs->at(0)));
-  // TYPE_ASSIGN_CHECK(*in_attrs, 0, TypeCast(out_attrs->at(0)));
 
   return out_attrs->at(0) != -1 && in_attrs->at(0) != -1;
 }
