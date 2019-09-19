@@ -21,14 +21,16 @@ namespace mshadow {
 /* \brief name space for host/device portable complex value */
 namespace complex {
 #define MSHADOW_COMPLEX_OPERATOR(DTYPE, OP)                               \
-  template<typename T, typename = typename\
-  std::enable_if<!(std::is_same<T, DTYPE>::value)>::type>  \
-  MSHADOW_XINLINE DTYPE operator OP (const DTYPE& a, const T& b) {        \
+  template<typename T, typename = typename                                \
+  std::enable_if<!(std::is_same<T, DTYPE>::value ||                       \
+  std::is_same<T, complex128>::value)>::type>                             \
+  MSHADOW_XINLINE DTYPE operator OP (DTYPE a, T b) {                      \
     return a OP DTYPE(b);  /* NOLINT(*) */                                \
   }                                                                       \
-  template<typename T, typename = typename\
-  std::enable_if<!(std::is_same<T, DTYPE>::value)>::type>  \
-  MSHADOW_XINLINE DTYPE operator OP (const T& a, const DTYPE& b) {        \
+  template<typename T, typename = typename                                \
+  std::enable_if<!(std::is_same<T, DTYPE>::value ||                       \
+  std::is_same<T, complex128>::value)>::type>                             \
+  MSHADOW_XINLINE DTYPE operator OP (T a, DTYPE b) {                      \
     return DTYPE(a) OP b;  /* NOLINT(*) */                                \
   }                                                                       \
 
@@ -50,7 +52,7 @@ class MSHADOW_ALIGNED(8) complex64 {
   };
 
   MSHADOW_XINLINE complex64() {}
-  MSHADOW_XINLINE complex64(const float& value) { constructor(value); }
+  MSHADOW_XINLINE explicit complex64(const float& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const double& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const int8_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const uint8_t& value) { constructor(value); }
@@ -58,15 +60,24 @@ class MSHADOW_ALIGNED(8) complex64 {
   MSHADOW_XINLINE explicit complex64(const uint32_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const int64_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const uint64_t& value) { constructor(value); }
+  MSHADOW_XINLINE explicit complex64(const half::half_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex64(const complex128& value);
 
-  MSHADOW_XINLINE operator float() const {
+  MSHADOW_XINLINE explicit operator float() const {
 #if MSHADOW_CUDA_COMPLEX
     return cuCrealf(cucomplex64_);
 #else
     return complex64_.real();
 #endif
   }
+  MSHADOW_XINLINE explicit operator double() const {return double(float(*this));}
+  MSHADOW_XINLINE explicit operator int8_t() const {return int8_t(float(*this));}
+  MSHADOW_XINLINE explicit operator uint8_t() const {return uint8_t(float(*this));}
+  MSHADOW_XINLINE explicit operator int32_t() const {return int32_t(float(*this));}
+  MSHADOW_XINLINE explicit operator uint32_t() const {return uint32_t(float(*this));}
+  MSHADOW_XINLINE explicit operator int64_t() const {return int64_t(float(*this));}
+  MSHADOW_XINLINE explicit operator uint64_t() const {return uint64_t(float(*this));}
+  MSHADOW_XINLINE explicit operator half::half_t() const {return half::half_t(float(*this));}
 
 #if MSHADOW_CUDA_COMPLEX
   MSHADOW_XINLINE explicit complex64(const cuFloatComplex& value) {
@@ -164,7 +175,7 @@ class MSHADOW_ALIGNED(16) complex128 {
   };
 
   MSHADOW_XINLINE complex128() {}
-  MSHADOW_XINLINE complex128(const double& value) { constructor(value); }
+  MSHADOW_XINLINE explicit complex128(const double& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const float& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const int8_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const uint8_t& value) { constructor(value); }
@@ -172,15 +183,24 @@ class MSHADOW_ALIGNED(16) complex128 {
   MSHADOW_XINLINE explicit complex128(const uint32_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const int64_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const uint64_t& value) { constructor(value); }
+  MSHADOW_XINLINE explicit complex128(const half::half_t& value) { constructor(value); }
   MSHADOW_XINLINE explicit complex128(const complex64& value);
 
-  MSHADOW_XINLINE operator double() const {
+  MSHADOW_XINLINE explicit operator double() const {
 #if MSHADOW_CUDA_COMPLEX
     return cuCreal(cucomplex128_);
 #else
     return complex128_.real();
 #endif
   }
+  MSHADOW_XINLINE explicit operator float() const {return float(double(*this));}
+  MSHADOW_XINLINE explicit operator int8_t() const {return int8_t(double(*this));}
+  MSHADOW_XINLINE explicit operator uint8_t() const {return uint8_t(double(*this));}
+  MSHADOW_XINLINE explicit operator int32_t() const {return int32_t(double(*this));}
+  MSHADOW_XINLINE explicit operator uint32_t() const {return uint32_t(double(*this));}
+  MSHADOW_XINLINE explicit operator int64_t() const {return int64_t(double(*this));}
+  MSHADOW_XINLINE explicit operator uint64_t() const {return uint64_t(double(*this));}
+  MSHADOW_XINLINE explicit operator half::half_t() const {return half::half_t(double(*this));}
 
 #if MSHADOW_CUDA_COMPLEX
   MSHADOW_XINLINE explicit complex128(const cuDoubleComplex& value) {
