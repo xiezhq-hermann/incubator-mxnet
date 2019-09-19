@@ -121,7 +121,8 @@ inline void cuFFTExec(
   cufftDoubleComplex* in_tmp = const_cast<cufftDoubleComplex*>(
       reinterpret_cast<const cufftDoubleComplex*>(input_buffer.dptr_));
   if (grad_dim == 0) {
-    cufftDoubleComplex* out_tmp = reinterpret_cast<cufftDoubleComplex*>(out_data.dptr_ + offset * len_fft);
+    cufftDoubleComplex* out_tmp = reinterpret_cast<cufftDoubleComplex*>(
+      out_data.dptr_ + offset * len_fft);
     CHECK_EQ(cufftExecZ2Z(plan, in_tmp, out_tmp, CUFFT_FORWARD), CUFFT_SUCCESS);
   } else {
     CHECK_EQ(cufftExecZ2Z(plan, in_tmp, in_tmp, CUFFT_INVERSE), CUFFT_SUCCESS);
