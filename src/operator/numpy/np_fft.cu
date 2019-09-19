@@ -18,15 +18,14 @@
  */
 
 /*!
- * Copyright (c) 2017 by Contributors
- * \file fft-inl.h
- * \brief
- * \author Chen Zhu
+ * \file np_fft.cu
+ * \brief GPU implementation of numpy-compatible fft operator
  */
- #include "./np_fft-inl.h"
 
- namespace mxnet {
- namespace op {
+#include "./np_fft-inl.h"
+
+namespace mxnet {
+namespace op {
 
 NNVM_REGISTER_OP(_np_fft)
 .set_attr<FCompute>("FCompute<gpu>", FFTForward<gpu>);
@@ -36,4 +35,3 @@ NNVM_REGISTER_OP(_backward_np_fft)
 
 }  // namespace op
 }  // namespace mxnet
- 

@@ -18,11 +18,10 @@
  */
 
 /*!
- * Copyright (c) 2015 by Contributors
- * \file fft-inl.h
- * \brief
- * \author Chen Zhu
-*/
+ * \file np_fft.cc
+ * \brief CPU implementation of numpy-compatible fft operator
+ */
+
 #include "./np_fft-inl.h"
 
 namespace mxnet {
@@ -39,7 +38,7 @@ inline bool FFTShape(const nnvm::NodeAttrs& attrs,
   const NPFFTParam& param = nnvm::get<NPFFTParam>(attrs.parsed);
   CHECK(!param.n.has_value() || param.n.value() > 0);
   TShape oshape = (*in_attrs)[0];
-  if (param.n.has_value()){
+  if (param.n.has_value()) {
       oshape[oshape.ndim()-1] = param.n.value();
   }
   SHAPE_ASSIGN_CHECK(*out_attrs, 0, oshape);
@@ -48,8 +47,7 @@ inline bool FFTShape(const nnvm::NodeAttrs& attrs,
 
 inline int TypeCast(const int& itype) {
   using namespace mshadow;
-  switch (itype)
-  {
+  switch (itype) {
   case kFloat32: case kFloat16: case kUint8: case kInt8: case kInt32: case kInt64: case kComplex64:
     return kComplex64;
   case kFloat64: case kComplex128:
