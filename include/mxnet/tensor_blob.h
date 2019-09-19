@@ -397,7 +397,7 @@ class TBlob {
           case 32: return mshadow::kComplex64;
           case 64: return mshadow::kComplex128;
         }
-      }else{
+      } else {
         LOG(FATAL) << "Unsupported DLDataType whose lanes != 1";
       }
     }
