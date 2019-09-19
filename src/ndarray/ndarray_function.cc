@@ -43,7 +43,7 @@ void Copy<cpu, cpu>(const TBlob &from, TBlob *to,
                << " bytes, to: " << to->Size() * sizeof(DType) << " bytes.";
       common::ParallelCopy(to->dptr<DType>(), from.dptr<DType>(), size);
     } else {
-      MSHADOW_TYPE_SWITCH(from.type_flag_, SrcDType, {
+      MSHADOW_TYPE_SWITCH_WITH_COMPLEX(from.type_flag_, SrcDType, {
           to->FlatTo1D<cpu, DType>() =
               mshadow::expr::tcast<DType>(from.FlatTo1D<cpu, SrcDType>());
       })
