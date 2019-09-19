@@ -1984,6 +1984,10 @@ def test_np_copysign():
 @with_seed()
 @use_np
 def test_np_fft():
+    if 'cpu' in str(mx.current_context()):
+        print("fft only supported on GPU")
+        return
+
     def np_fft_backward(ograd, n, axis=-1):
         igrad = _np.fft.ifft(ograd)
         if n > igrad.shape[axis]:
