@@ -145,7 +145,7 @@ class MSHADOW_ALIGNED(8) complex64 {
 #if MSHADOW_CUDA_COMPLEX
     return complex64(make_cuFloatComplex(-cuCrealf(cucomplex64_), -cuCimagf(cucomplex64_)));
 #else
-    return -(*this);
+    return complex64(-complex64_);
 #endif
   }
 
@@ -282,7 +282,7 @@ class MSHADOW_ALIGNED(16) complex128 {
 #if MSHADOW_CUDA_COMPLEX
     return complex128(make_cuDoubleComplex(-cuCreal(cucomplex128_), -cuCimag(cucomplex128_)));
 #else
-    return -(*this);
+    return complex128(-complex128_);
 #endif
   }
 

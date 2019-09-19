@@ -54,6 +54,7 @@ struct NPFFTParam : public dmlc::Parameter<NPFFTParam> {
   }
 };
 
+#if MXNET_USE_CUDA
 struct resize_and_cast {
   template <typename IType, typename OType>
   MSHADOW_XINLINE static void Map(int i, OType* out, IType* in,
@@ -65,13 +66,11 @@ struct resize_and_cast {
   }
 };
 
-template <typename xpu>
 inline void cuFFTPlan(cufftHandle* plan, int len_fft, int batch_size,
                       const mshadow::complex::complex64& indicator) {
   cufftPlanMany(plan, 1, &len_fft, nullptr, 0, 0, nullptr, 0, 0, CUFFT_C2C, batch_size);
 }
 
-template <typename xpu>
 inline void cuFFTPlan(cufftHandle* plan, int len_fft, int batch_size,
                       const mshadow::complex::complex128& indicator) {
   cufftPlanMany(plan, 1, &len_fft, nullptr, 0, 0, nullptr, 0, 0, CUFFT_Z2Z, batch_size);
@@ -148,7 +147,7 @@ inline void FFTExec(const OpContext& ctx,
 
   // start fft
   cufftHandle plan;
-  cuFFTPlan<xpu>(&plan, len_fft, batch_size, indicator);
+  cuFFTPlan(&plan, len_fft, batch_size, indicator);
 
   size_t num_compute = n_ffts / batch_size;
   for (size_t idx = 0; idx < num_compute; ++idx) {
@@ -161,12 +160,22 @@ inline void FFTExec(const OpContext& ctx,
   int remain_num = n_ffts - batch_size * num_compute;
   if (remain_num > 0) {
     cufftHandle plan_remain;
-    cuFFTPlan<xpu>(&plan_remain, len_fft, remain_num, indicator);
+    cuFFTPlan(&plan_remain, len_fft, remain_num, indicator);
     cuFFTExec(ctx, plan_remain, in_data, out_data, input_buffer,
               num_compute * batch_size, remain_num, len_fft, grad_dim);
     cufftDestroy(plan_remain);
   }
 }
+#else
+template <typename xpu, typename IType, typename OType, typename FFTType>
+inline void FFTExec(const OpContext& ctx,
+                    const mshadow::Tensor<xpu, 2, IType>& in_data,
+                    const mshadow::Tensor<xpu, 2, OType>& out_data,
+                    const FFTType& indicator, int n_ffts, int len_fft,
+                    int batch_size, int grad_dim = 0) {
+  LOG(FATAL) << "fft is only available for GPU.";
+}
+#endif
 
 template <typename xpu>
 void FFTForwardImpl(const OpContext& ctx, const TBlob& in, const TBlob& out,
